@@ -42,10 +42,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
 	// DesertPbrApp is the main pbr-app
 	_scene = new DesertPbrApp(__argc, __argv);
 
-	grpc::ChannelArguments args;
-
-	args.SetCompressionAlgorithm(GRPC_COMPRESS_GZIP);
-
 	// DesertPbrApiModel uses a pbr-scene for api inteactions
 	auto _core = new DesertPbrApiModel(_scene);
 
