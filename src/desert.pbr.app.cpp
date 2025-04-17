@@ -5,68 +5,63 @@
 #pragma comment(lib, "Ws2_32.lib")
 
 #include <iostream>
+
+// Protobuf and gRPC includes
 #include <ipcde3.pb.h>
 #include <ipcde3.grpc.pb.h>
-#include <contextEngine.grpc.pb.h>
 #include <contextEngine.pb.h>
+#include <contextEngine.grpc.pb.h>
+
+// Desert PBR and Vulkan includes
 #include <pbr.hpp>
 #include <desert.pbr.api.hpp>
-#include <grpcpp/support/channel_arguments.h>
 #include <rsc.hpp>
+#include <grpcpp/support/channel_arguments.h>
 
 using namespace desertpbrapp;
 using namespace desertpbrapi;
 
-DesertPbrApp *_scene;
+std::unique_ptr<DesertPbrApp> g_scene;
 
 /**
  * Window Callback Function
  */
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	if (_scene != NULL)
+	if (g_scene)
 	{
-		_scene->handleMessages(hWnd, uMsg, wParam, lParam);
+		g_scene->handleMessages(hWnd, uMsg, wParam, lParam);
 	}
 
-	return (DefWindowProc(hWnd, uMsg, wParam, lParam));
+	return DefWindowProc(hWnd, uMsg, wParam, lParam);
 }
 
 /**
- * Main-Window for Windows.
+ * Entry point for the Windows application.
  */
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int)
 {
 	desert::info("Starting DESERT_PBR_APP...");
 
-	// DesertPbrApp is the main pbr-app
-	_scene = new DesertPbrApp(__argc, __argv);
+	// Initialize the DesertPbrApp
+	g_scene = std::make_unique<DesertPbrApp>(__argc, __argv);
 
-	// DesertPbrApiModel uses a pbr-scene for api inteactions
-	auto _core = new DesertPbrApiModel(_scene);
+	// Create the core API model with the scene
+	std::unique_ptr<DesertPbrApiModel> core = std::make_unique<DesertPbrApiModel>(g_scene.get());
 
+	// Build and apply default settings
 	auto settings = DesertPbrApp::buildDefaultSettings();
+	g_scene->init(&settings);
+	g_scene->setupWindow(hInstance, WndProc);
+	g_scene->prepare();
 
-	// initialize vulkan scene rendering
-	_scene->init(&settings);
+	// Build default desert scene and insert it into the core
+	auto defaultScene = core->buildDefaultDesert();
+	core->insertDesert(&defaultScene);
 
-	// initialize the window
-	_scene->setupWindow(hInstance, WndProc);
+	// Start the main loop
+	core->run();
 
-	// prepare vulkan environment
-	_scene->prepare();
-
-	auto defaultScene = _core->buildDefaultDesert();
-
-	// insert scene entities to the core-model via pbr-api
-	_core->insertDesert(&defaultScene);
-
-	// start game loop
-	_core->run();
-
-	delete (_core);
-	
-	delete (_scene);
-
+	// Resources are automatically cleaned up with smart pointers
 	return 0;
 }
